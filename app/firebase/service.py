@@ -1,9 +1,9 @@
 import firebase_admin
 from firebase_admin import credentials, db
-from app.config import FIREBASE_CRED_PATH, FIREBASE_DB_URL
+from app.config import FIREBASE_CREDENTIALS_PATH, FIREBASE_DB_URL
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate(FIREBASE_CRED_PATH)
+    cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
     firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_DB_URL})
 
 def update_last_image_url(cell_id: int, image_url: str):
