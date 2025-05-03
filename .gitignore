@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
 .env
-firebase-credentials/
+.serviceAccountKey.json
+*.json
 data/plant_images/
