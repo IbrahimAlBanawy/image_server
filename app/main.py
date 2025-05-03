@@ -1,56 +1,32 @@
-from fastapi import FastAPI, HTTPException
-from app.routes import images
 import os
 import json
+from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-# Firebase Admin SDK
-import firebase_admin
 from firebase_admin import credentials, db
-
-# Supabase Client
-from supabase import create_client, Client
+import firebase_admin
+from app.routes import images
+from app.config import supabase, FIREBASE_DB_URL, FIREBASE_SERVICE_ACCOUNT_KEY, SUPABASE_BUCKET_URL
 
 app = FastAPI(title="ESP32-CAM Image Server")
 
-# Include your routes
+# Include image routes
 app.include_router(images.router)
 
-# Firebase Initialization
-firebase_service_account_key = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
-firebase_db_url = os.getenv("FIREBASE_DB_URL")
-
-if not firebase_service_account_key:
-    raise ValueError("FIREBASE_SERVICE_ACCOUNT_KEY environment variable not set.")
-if not firebase_db_url:
-    raise ValueError("FIREBASE_DB_URL environment variable not set.")
-
+# ✅ Firebase Initialization (if not already initialized)
 if not firebase_admin._apps:
     try:
-        cred_dict = json.loads(firebase_service_account_key)
+        cred_dict = json.loads(FIREBASE_SERVICE_ACCOUNT_KEY)
         cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred, {"databaseURL": firebase_db_url})
+        firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_DB_URL})
     except Exception as e:
         raise ValueError(f"Error initializing Firebase: {str(e)}")
 
-# Supabase Initialization
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("Supabase URL or Key environment variables not set.")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# ✅ Root test
+# ✅ Root test endpoint
 @app.get("/")
 def read_root():
     return {"message": "ESP32-CAM Image Server Running"}
 
-# ✅ Firebase test
+# ✅ Firebase test endpoint
 @app.get("/firebase-test")
 def firebase_test():
     try:
@@ -59,7 +35,7 @@ def firebase_test():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Firebase Error: {str(e)}")
 
-# ✅ Supabase test
+# ✅ Supabase test endpoint
 @app.get("/supabase-test")
 def supabase_test():
     try:
@@ -68,19 +44,17 @@ def supabase_test():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supabase Error: {str(e)}")
 
-# ✅ List Public Image URLs from Supabase
-@app.get("/supabase-images")
-def list_public_images():
+# ✅ List public image URLs from Supabase
+@app.get("/supabase-images/{cell_id}")
+def list_public_images(cell_id: int):
     try:
-        bucket_name = "esp32-images"  # Replace with your Supabase bucket name
-        folder_path = "images/"       # Optional: folder inside the bucket
+        folder_path = f"{cell_id}/"  # Each cell stores its images in its own folder
+        files = supabase.storage.from_("plant-images").list(folder_path)
 
-        result = supabase.storage.from_(bucket_name).list(folder_path)
-        files = result
-
-        # Construct the base public URL
-        base_url = f"{SUPABASE_URL}/storage/v1/object/public/{bucket_name}/{folder_path}"
-        image_urls = [base_url + file['name'] for file in files if 'name' in file]
+        image_urls = [
+            f"{SUPABASE_BUCKET_URL}/{cell_id}/{file['name']}"
+            for file in files if 'name' in file
+        ]
 
         return {"image_urls": image_urls}
     except Exception as e:

@@ -1,6 +1,6 @@
-import os
 from datetime import datetime
 from fastapi import UploadFile
+from uuid import uuid4
 from app.firebase.service import (
     update_last_image_url,
     get_last_image_url_from_db,
@@ -8,19 +8,26 @@ from app.firebase.service import (
     delete_last_image,
     clear_all_images
 )
-from app.config import IMAGE_STORAGE_PATH, IMAGE_BASE_URL
+from app.config import SUPABASE_BUCKET_URL, supabase
 
 async def save_image_and_update_firebase(cell_id: int, file: UploadFile):
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"cell{cell_id}_{timestamp}.jpg"
-    folder_path = os.path.join(IMAGE_STORAGE_PATH, f"cell{cell_id}")
-    os.makedirs(folder_path, exist_ok=True)
+    unique_filename = f"cell{cell_id}_{timestamp}_{uuid4().hex}.jpg"
+    storage_path = f"cell{cell_id}/{unique_filename}"
 
-    file_path = os.path.join(folder_path, filename)
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    # Upload the image to Supabase bucket
+    file_content = await file.read()
+    supabase.storage.from_("plant-images").upload(
+        path=storage_path,
+        file=file_content,
+        file_options={"content-type": file.content_type},
+        upsert=True
+    )
 
-    image_url = f"{IMAGE_BASE_URL}/data/plant_images/cell{cell_id}/{filename}"
+    # Construct public URL
+    image_url = f"{SUPABASE_BUCKET_URL}/{storage_path}"
+
+    # Update Firebase with the image URL
     update_last_image_url(cell_id, image_url)
     return {"message": "✅ Image saved and Firebase updated", "url": image_url}
 

@@ -16,19 +16,32 @@ if not FIREBASE_DB_URL:
 
 # ✅ Parse Firebase credentials from the environment variable
 try:
-    # Parse the JSON string into a dictionary
     firebase_credentials = json.loads(FIREBASE_SERVICE_ACCOUNT_KEY)
 except Exception as e:
     raise ValueError(f"Error parsing Firebase service account key: {str(e)}")
 
-# ✅ Image Storage Config
+# ✅ Supabase Config
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("SUPABASE_URL or SUPABASE_KEY environment variables not set.")
+
+from supabase import create_client
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# ✅ Supabase Bucket Public URL
+SUPABASE_BUCKET_URL = "https://kaqawvycksitnvzrldwh.supabase.co/storage/v1/object/public/plant-images"
+
+# ✅ Optional Local Storage Config
 IMAGE_STORAGE_PATH = os.getenv("IMAGE_STORAGE_PATH", "./data/plant_images")
 IMAGE_BASE_URL = os.getenv("IMAGE_BASE_URL")
 
-# Ensure image storage path is set properly
 if not IMAGE_BASE_URL:
     raise ValueError("IMAGE_BASE_URL environment variable not set.")
 
-# Log the configuration for debugging purposes (ensure sensitive info is not logged)
+# ✅ Debug Logging (avoid logging sensitive credentials)
 print(f"Firebase DB URL: {FIREBASE_DB_URL}")
+print(f"Supabase URL: {SUPABASE_URL}")
 print(f"Image Storage Path: {IMAGE_STORAGE_PATH}")
