@@ -1,28 +1,10 @@
-import os
-import json
 import firebase_admin
 from firebase_admin import credentials, db
+from app.config import FIREBASE_CRED_PATH, FIREBASE_DB_URL
 
-# ✅ Initialize Firebase using environment variable-based credential
 if not firebase_admin._apps:
-    firebase_cred_json = os.getenv("FIREBASE_CRED_JSON")
-    firebase_db_url = os.getenv("FIREBASE_DB_URL")
-
-    if not firebase_cred_json:
-        raise ValueError("Missing FIREBASE_CRED_JSON environment variable")
-    if not firebase_db_url:
-        raise ValueError("Missing FIREBASE_DB_URL environment variable")
-
-    try:
-        cred_dict = json.loads(firebase_cred_json)
-        cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred, {"databaseURL": firebase_db_url})
-        print("✅ Firebase Admin SDK initialized")
-    except Exception as e:
-        print("❌ Firebase initialization failed:", str(e))
-        raise e
-
-# ✅ Firebase image operations
+    cred = credentials.Certificate(FIREBASE_CRED_PATH)
+    firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_DB_URL})
 
 def update_last_image_url(cell_id: int, image_url: str):
     ref = db.reference(f"esp32cam/images/cell{cell_id}")
