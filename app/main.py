@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from app.routes import images
 import os
+import json
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -23,18 +24,20 @@ app.mount("/data", StaticFiles(directory="data"), name="data")
 app.include_router(images.router)
 
 # ✅ Firebase Initialization
-firebase_cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
+firebase_service_account_key = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
 firebase_db_url = os.getenv("FIREBASE_DB_URL")
 
 # Ensure Firebase credentials are available
-if not firebase_cred_path:
-    raise ValueError("FIREBASE_CREDENTIALS_PATH environment variable not set.")
+if not firebase_service_account_key:
+    raise ValueError("FIREBASE_SERVICE_ACCOUNT_KEY environment variable not set.")
 if not firebase_db_url:
     raise ValueError("FIREBASE_DB_URL environment variable not set.")
 
 if not firebase_admin._apps:
     try:
-        cred = credentials.Certificate(firebase_cred_path)
+        # Load Firebase credentials directly from the environment variable
+        cred_dict = json.loads(firebase_service_account_key)
+        cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred, {"databaseURL": firebase_db_url})
     except Exception as e:
         raise ValueError(f"Error initializing Firebase: {str(e)}")
